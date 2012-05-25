@@ -1,0 +1,143 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8" />
+<title></title>
+<link rel="stylesheet" href="http://reset5.googlecode.com/hg/reset.min.css" />
+<link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Droid+Sans+Mono" />
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<!--[if lt IE 9]>
+<script src="http://ie7-js.googlecode.com/svn/version/2.1(beta4)/IE9.js"></script>
+<![endif]-->
+<link rel="stylesheet" href="../ziyun__html5doc/html5doc.css" />
+<style>
+header, section, footer { margin: 0; }
+
+h1 { font-size: 1.8em; }
+h2 { font-size: 1.3em; }
+
+ol { margin-left: 3.0em; }
+
+textarea {
+    font-family: Monaco, "Andale Mono", "Courier New", monospace;
+    font-size: 1.0em;
+    padding: 3px 5px 3px 5px;
+    background-color: #DDEEFF;
+}
+
+button {
+    display: block;
+    cursor: pointer;
+}
+
+pre {
+    font-family: Monaco, "Andale Mono", "Courier New", monospace;
+    font-size: 0.9em;
+    color: #007000;
+    line-height: 1.1;
+}
+pre#error { color: red; }
+</style>
+</head>
+<body>
+<header><h1>html5doc 导航目录及内容标题 Markdown 生成器</h1></header><hr />
+<article>
+<h2>原始输入</h2>
+<ul>
+<li><b>标准格式:</b> <code>n.n.n.n.n  目录标题</code>.</li>
+<li><b>正则模式:</b> <code>/^[A-Z\d]+(\.[A-Z\d]+)* {2}\S[ \S]*$/</code>.</li>
+<li><b>注意事项:</b><ol>
+<li><b>导航目录</b> 层级无限制; <b>内容标题</b> 超过 5 行按 5 行算, 因标题标记最多为 <code>h6</code>.</li>
+<li><b>原始输入</b> 中的 <code>n.n.n.n.n</code> 与 <code>目录标题</code> 之间需要 <b>两个</b> 空格.</li>
+<li>解析过程中会删除每行前后空白, 同时清除完全空白的行.</li>
+<ol/></li>
+</ul>
+<textarea cols="72" rows="12" id="contents"></textarea>
+<button id="create">解析目录并创建导航及标题</button>
+</article><hr />
+<section><h2>错误条目</h2><pre id="error"></pre></section><hr />
+<section><h2>导航目录</h2><pre id="nav"></pre></section><hr />
+<section><h2>内容标题</h2><pre id="title"></pre></section><hr />
+<footer><address></address></footer>
+<script>
+/* 字符串乘法 */
+String.prototype.times = function (n) {
+    var s = this;
+    var total = "";
+    while (n > 0) {
+        if (n % 2 == 1) { total += s; }
+        if (n == 1) { break; }
+        s += s;
+        n = n >> 1;
+    }
+    return total;
+};
+
+$(function () {
+
+    /* 离开提示 */
+    $(window).bind("beforeunload", function () {
+        if ($.trim($("textarea#contents").val()).length > 0) {
+            return "您正在编辑数据，确定要离开本页吗？";
+        }
+        return;
+    });
+
+    /* 页面标题 */
+    $("title:first").text($("h1:first").text());
+
+    /* 版权信息 */
+    $("footer > address").html("子云科技 ziyun");
+
+    /* 创建按钮 */
+    $("button#create").bind("click", function () {
+
+        /* 正则模式 */
+        var regexp = /^[A-Z\d]+(\.[A-Z\d]+)*  \S[ \S]*$/;
+
+        /* 清空代码 */
+        $("pre[id]").empty();
+
+        /* 目录数据 */
+        var data = {
+            // 清除每行前后空白, 忽略全空白行.
+            contents: $.grep($.map($("textarea#contents").val().split("\n"),
+                                   function (e) { return $.trim(e); }),
+                             function (e, i) { return e.length > 0; }),
+            right: [],
+            error: [],
+            nav: [],
+            title: []
+        }
+
+        /* 数据筛选 */
+        function filter(e, i) { return regexp.test(e); }; // 过滤
+        data.right = $.grep(data.contents, filter);         // 正确
+        data.error = $.grep(data.contents, filter, true);  // 错误
+
+        /* Markdown */
+        data.nav = $.map(data.right, function (e) {   /* 导航 */
+            var prefix = e.substring(0, e.indexOf("  ")); // 前缀
+            var level = prefix.split(".").length;         // 层级
+            var repeat = "    ".times(level - 1);         // 重复
+            return repeat + "-   [" + e + "](#" + prefix + ")";
+        });
+        data.title = $.map(data.right, function (e) { /* 标题 */
+            var prefix = e.substring(0, e.indexOf("  "));      // 前缀
+            var level = prefix.split(".").length;              // 层级
+            var repeat = "#".times(level > 5 ? 6 : level + 1); // 重复
+            return repeat + " <a id=\"" + prefix + "\"></a>" + e;
+        });
+
+        /* 输出代码 */
+        $("pre#error").text(data.error.join("\n"));
+        $("pre#nav").text(data.nav.join("\n"));
+        $("pre#title").text(data.title.join("\n"));
+
+    });
+
+});
+</script>
+</body>
+</html>
+
